@@ -1,0 +1,235 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define USERNAME "admin"
+#define PASSWORD "1234"
+#define FINE_PER_DAY 2
+#define MAX_LOGIN_ATTEMPTS 3
+
+struct Book {
+    int id;
+    char title[50];
+    char author[50];
+    int quantity;
+    struct Book *next;
+};
+
+struct Issue {
+    int bookId;
+    char studentName[50];
+    int issueDay;
+    int returnDay;
+    struct Issue *next;
+};
+
+struct Book *bookHead = NULL;
+struct Issue *issueHead = NULL;
+
+struct Book* createBook(int id, char *title, char *author, int quantity) {
+    struct Book *newBook = (struct Book*)malloc(sizeof(struct Book));
+    if (newBook == NULL) {
+        printf("Memory Allocation Failed!\n");
+        exit(1);
+    }
+
+    newBook->id = id;
+    strcpy(newBook->title, title);
+    strcpy(newBook->author, author);
+    newBook->quantity = quantity;
+    newBook->next = NULL;
+
+    return newBook;
+}
+
+void addDefaultBooks() {
+    bookHead = createBook(101, "C Programming", "Dennis Ritchie", 5);
+    bookHead->next = createBook(102, "Data Structures", "Mark Allen", 3);
+    bookHead->next->next = createBook(103, "Operating System", "Galvin", 4);
+}
+
+void login() {
+    char user[20], pass[20];
+    int attempts = 0;
+
+    while (attempts < MAX_LOGIN_ATTEMPTS) {
+        printf("Username: ");
+        scanf("%19s", user);
+        printf("Password: ");
+        scanf("%19s", pass);
+
+        if (strcmp(user, USERNAME) == 0 && strcmp(pass, PASSWORD) == 0) {
+            printf("Login Successful!\n");
+            return;
+        } else {
+            printf("Invalid Credentials! Try Again.\n");
+            attempts++;
+        }
+    }
+
+    printf("Too Many Failed Attempts. Exiting...\n");
+    exit(0);
+}
+
+struct Book* findBook(int id) {
+    struct Book *temp = bookHead;
+    while (temp != NULL) {
+        if (temp->id == id)
+            return temp;
+        temp = temp->next;
+    }
+    return NULL;
+}
+
+void displayBooks() {
+    struct Book *temp = bookHead;
+
+    if (temp == NULL) {
+        printf("\nNo Books Available!\n");
+        return;
+    }
+
+    printf("\n================ AVAILABLE BOOKS ================\n");
+    printf("%-10s %-20s %-20s %-10s\n", "Book ID", "Title", "Author", "Quantity");
+    printf("---------------------------------------------------------------\n");
+
+    while (temp != NULL) {
+        printf("%-10d %-20s %-20s %-10d\n",
+               temp->id,
+               temp->title,
+               temp->author,
+               temp->quantity);
+        temp = temp->next;
+    }
+
+    printf("===============================================================\n");
+}
+
+void issueBook() {
+    int id, day;
+    char name[50];
+
+    printf("Enter Book ID to Issue: ");
+    scanf("%d", &id);
+
+    struct Book *book = findBook(id);
+
+    if (book == NULL) {
+        printf("Book Not Found!\n");
+        return;
+    }
+
+    if (book->quantity <= 0) {
+        printf("Out of Stock!\n");
+        return;
+    }
+
+    printf("Enter Student Name: ");
+    scanf(" %[^\n]", name);
+
+    printf("Enter Issue Day: ");
+    scanf("%d", &day);
+
+    if (day < 0) {
+        printf("Invalid Day!\n");
+        return;
+    }
+
+    struct Issue *newIssue = (struct Issue*)malloc(sizeof(struct Issue));
+    if (newIssue == NULL) {
+        printf("Memory Allocation Failed!\n");
+        return;
+    }
+
+    newIssue->bookId = id;
+    strcpy(newIssue->studentName, name);
+    newIssue->issueDay = day;
+    newIssue->returnDay = 0;
+    newIssue->next = issueHead;
+    issueHead = newIssue;
+
+    book->quantity--;
+
+    printf("Book Issued Successfully!\n");
+}
+
+void returnBook() {
+    int id, returnDay;
+    char name[50];
+    struct Issue *temp = issueHead;
+
+    printf("Enter Book ID to Return: ");
+    scanf("%d", &id);
+
+    printf("Enter Student Name: ");
+    scanf(" %[^\n]", name);
+
+    while (temp != NULL) {
+        if (temp->bookId == id &&
+            strcmp(temp->studentName, name) == 0 &&
+            temp->returnDay == 0) {
+
+            printf("Enter Return Day: ");
+            scanf("%d", &returnDay);
+
+            if (returnDay < temp->issueDay) {
+                printf("Invalid Return Day!\n");
+                return;
+            }
+
+            temp->returnDay = returnDay;
+
+            int lateDays = returnDay - temp->issueDay - 7;
+            int fine = 0;
+
+            if (lateDays > 0)
+                fine = lateDays * FINE_PER_DAY;
+
+            struct Book *book = findBook(id);
+            if (book != NULL)
+                book->quantity++;
+
+            printf("Book Returned Successfully!\n");
+            printf("Fine = %d\n", fine);
+            return;
+        }
+        temp = temp->next;
+    }
+
+    printf("Issue Record Not Found!\n");
+}
+
+int main() {
+
+    addDefaultBooks();
+    login();
+
+    int choice;
+
+    while (1) {
+        printf("\n=========== LIBRARY MANAGEMENT SYSTEM ===========\n");
+        printf("1. Display Books\n");
+        printf("2. Issue Book\n");
+        printf("3. Return Book\n");
+        printf("4. Exit\n");
+        printf("Enter Choice: ");
+
+        if (scanf("%d", &choice) != 1) {
+            printf("Invalid Input!\n");
+            break;
+        }
+
+        switch (choice) {
+            case 1: displayBooks(); break;
+            case 2: issueBook(); break;
+            case 3: returnBook(); break;
+            case 4: 
+                printf("Exiting Program...\n");
+                exit(0);
+            default: 
+                printf("Invalid Choice!\n");
+        }
+    }
+
+    return 0;
+}
